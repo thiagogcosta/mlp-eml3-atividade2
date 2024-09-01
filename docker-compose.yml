@@ -1,0 +1,120 @@
+version: '3.8'
+
+services:
+  jupyterlab_spark:
+    restart: on-failure
+    image: jupyterlab_spark
+    build: ./jupyterlab_spark
+    container_name: jupyterlab_spark
+    ports:
+      - "8888:8888"
+    networks:
+      - internal
+      - public
+    environment:
+      - MLFLOW_TRACKING_URI=http://mlflow_server:5000/
+    depends_on:
+      - mlflow_server
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://mlflow_server:5000/api/2.0/mlflow/experiments/list || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  db:
+    restart: on-failure
+    image: postgres:latest
+    container_name: mlflow_db
+    expose:
+      - "5432"
+    networks:
+      - internal
+    environment:
+      POSTGRES_USER: mlflow
+      POSTGRES_PASSWORD: mlflow
+      POSTGRES_DB: mlflow
+    volumes:
+      - ./db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-p", "5432", "-U", "mlflow"]
+      interval: 5s
+      timeout: 5s
+      retries: 3
+
+  s3:
+    restart: on-failure
+    image: minio/minio
+    container_name: mlflow_minio
+    ports:
+      - "9000:9000"  # MinIO S3 endpoint
+      - "9001:9001"  # MinIO Console endpoint
+    volumes:
+      - ./minio_data:/data
+    environment:
+      MINIO_ROOT_USER: minio
+      MINIO_ROOT_PASSWORD: minio123
+    command: server --console-address ":9001" /data
+    networks:
+      - internal
+      - public
+  
+  create_s3_buckets:
+    restart: on-failure
+    image: minio/mc
+    container_name: create_s3_buckets
+    depends_on:
+      - s3
+    entrypoint: >
+      /bin/sh -c "
+      until /usr/bin/mc alias set myminio http://s3:9000 minio minio123; do echo '...waiting...' && sleep 1; done;
+      /usr/bin/mc mb myminio/mlflow;
+      exit 0;
+      "
+    networks:
+      - internal
+  
+  mlflow_server:
+    container_name: mlflow_server
+    image: mlflow_server
+    restart: on-failure
+    build: mlflow_server
+    ports:
+      - "5000:5000"
+    environment:
+      - AWS_ACCESS_KEY_ID=minio
+      - AWS_SECRET_ACCESS_KEY=minio123
+      - MLFLOW_S3_ENDPOINT_URL=http://s3:9000
+      - MLFLOW_S3_IGNORE_TLS=true
+    networks:
+      - internal
+      - public
+    depends_on:
+      - s3
+      - db
+    entrypoint: bash ./wait-for-it.sh db:5432 -t 90 -- mlflow server --backend-store-uri postgresql://mlflow:mlflow@db:5432/mlflow --default-artifact-root s3://mlflow/ --host 0.0.0.0
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://mlflow_server:5000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  db_data:
+  minio_data:
+
+networks:
+  internal:
+  public:
+    driver: bridge
+
+# # Down the services
+# docker-compose down
+
+# # Rebuild images with cache
+# docker-compose build
+
+# # Rebuild images without cache
+# docker-compose build --no-cache
+
+# # Start or restart the services
+# docker-compose up
