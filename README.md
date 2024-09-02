@@ -1,6 +1,6 @@
 ## UFSCAR - Machine Learning in Production - EML3 - Atividade 2
 
-Este repositório possui o intuito de conter os códigos da atividade 3, no qual possui o objetivo de por em prática o processo de registro de parâmetros, hiperparâmetros e métricas usando o MLflow, possibilitando a visualização do desempenho e a análise do melhor modelo para colocar em produção. Desse modo, a seguir é possível observar alguas referências utilizadas para a execução desta atividade:
+Este repositório possui o intuito de conter os códigos da atividade 2 do componente de EML3, no qual possui o objetivo de por em prática o processo de registro de parâmetros, hiperparâmetros e métricas usando o MLflow, possibilitando a visualização do desempenho e a análise do melhor modelo para colocar em produção. Desse modo, a seguir é possível observar alguas referências utilizadas para a execução desta atividade:
 
 Tutorial de como utilizar o Jupyter Lab com Spark:
 - https://github.com/whole-tale/all-spark-notebook
