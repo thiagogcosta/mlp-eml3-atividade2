@@ -1,4 +1,4 @@
-## UFSCAR - Machine Learning in Production - EML2 - Atividade 2
+## UFSCAR - Machine Learning in Production - EML3 - Atividade 2
 
 Este repositório possui o intuito de conter os códigos da atividade 3, no qual possui o objetivo de por em prática o processo de registro de parâmetros, hiperparâmetros e métricas usando o MLflow, possibilitando a visualização do desempenho e a análise do melhor modelo para colocar em produção. Desse modo, a seguir é possível observar alguas referências utilizadas para a execução desta atividade:
 
