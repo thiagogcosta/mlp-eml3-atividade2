@@ -13,6 +13,10 @@ services:
       - public
     environment:
       - MLFLOW_TRACKING_URI=http://mlflow_server:5000/
+      - AWS_ACCESS_KEY_ID=NetzYOidILbYfa31Re9w
+      - AWS_SECRET_ACCESS_KEY=x66YtbX5xPrDQKvvr9IS7SAUJ3zaCpbl2MqP6MGk
+      - MLFLOW_S3_ENDPOINT_URL=http://s3:9000
+      - MLFLOW_S3_IGNORE_TLS=true
     depends_on:
       - mlflow_server
     healthcheck:
@@ -58,6 +62,7 @@ services:
       - internal
       - public
   
+  #REF: https://min.io/docs/minio/linux/administration/identity-access-management/minio-user-management.html
   create_s3_buckets:
     restart: on-failure
     image: minio/mc
@@ -66,8 +71,24 @@ services:
       - s3
     entrypoint: >
       /bin/sh -c "
-      until /usr/bin/mc alias set myminio http://s3:9000 minio minio123; do echo '...waiting...' && sleep 1; done;
+      # Wait for MinIO server to be ready
+      until /usr/bin/mc alias set myminio http://s3:9000 minio minio123; do
+        echo '...waiting...';
+        sleep 1;
+      done;
+
+      # Create a bucket named 'mlflow'
       /usr/bin/mc mb myminio/mlflow;
+
+      # Set public read access policy on the bucket
+      /usr/bin/mc policy set readwrite myminio/mlflow;
+
+      # Create a new user with an access key and secret key
+      /usr/bin/mc admin user add myminio NetzYOidILbYfa31Re9w x66YtbX5xPrDQKvvr9IS7SAUJ3zaCpbl2MqP6MGk;
+
+      # Attach readwrite policy to the new user
+      /usr/bin/mc admin policy set myminio readwrite user=NetzYOidILbYfa31Re9w;
+
       exit 0;
       "
     networks:
@@ -81,8 +102,8 @@ services:
     ports:
       - "5000:5000"
     environment:
-      - AWS_ACCESS_KEY_ID=minio
-      - AWS_SECRET_ACCESS_KEY=minio123
+      - AWS_ACCESS_KEY_ID=NetzYOidILbYfa31Re9w
+      - AWS_SECRET_ACCESS_KEY=x66YtbX5xPrDQKvvr9IS7SAUJ3zaCpbl2MqP6MGk
       - MLFLOW_S3_ENDPOINT_URL=http://s3:9000
       - MLFLOW_S3_IGNORE_TLS=true
     networks:
